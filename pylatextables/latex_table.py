@@ -1,10 +1,11 @@
 """
 
 written by: Oliver Cordes 2021-11-30
-changed by: Oliver Cordes 2021-11-30
+changed by: Oliver Cordes 2021-12-07
 """
 
 import numpy as np
+
 
 
 class LatexTable(object):
@@ -14,8 +15,32 @@ class LatexTable(object):
                 header_top_hline=False,
                 footer_hline=False,
                 col_type='c',
-                col_descr=None     # overwrite the col_description, default is col_align for all colums
+                col_descr=None     # overwrite the col_description, default is col_type for all colums
                 ):
+        """
+        Initialise a LatexTable object with all data structures. The LaTeX table will be created with __str__
+        or save_file method. This methods checks all parameters carefully and raises TypeError- and ValueError-error
+        upon wrong used parameters.
+
+        Parameters
+        ----------
+        data: list or tuple
+            List of data columns.
+        header: list or tuple, optional
+            List of header strings to describe the tabular data. The number of entries must be
+            the same as the number of data columns.
+        header_bottom_hline: bool, optional
+            Prints a line below the header.
+        header_top_hline: bool, optional
+            Prints a line above the header.
+        footer_hline: bool, optional
+            Prints a line at the end of the table.
+        col_type: char, optional
+            Type of all columns in LaTeX coding, 'l', 'c', 'r', 'S' (from siunitx).
+        col_descr: list or tuple, optional
+            Sets the col_type individually for all columns. The number of entries must be the same
+            as the number of data columns. (There is no check of correctness!)
+        """
 
         self._length = -1
         self._check_data(data)   # if error it will never come back ...
@@ -29,8 +54,10 @@ class LatexTable(object):
             if col_type not in ['c', 'l', 'r', 'S']:
                 raise ValueError('col_type must be one of \'l\',\'c\',\'r\',\'S\'')
             self._col_descr = ''.join([col_type for i in range(self._nritems)])
+            self._col_type = col_type
         else:
             self._col_descr = col_descr
+            self._col_type = None
 
 
         # check for header descriptions
@@ -38,6 +65,12 @@ class LatexTable(object):
             if isinstance(header, (list, tuple)):
                 if len(header) != self._nritems:
                     raise ValueError('header must have same length as number of columns')
+                if (self._col_type is not None) and (self._col_type == 'S'):   
+                    # change for siunitx
+                    header = ['{%s}' % i for i in header]
+
+            else:
+                raise ValueError('header must be list or tuple')
         self._header = header
         self._header_top_hline = header_top_hline
         self._header_bottom_hline = header_bottom_hline
@@ -70,6 +103,9 @@ class LatexTable(object):
 
 
     def __str__(self):
+        """
+        Converts the data columns into a LaTeX table represented as an ascii string.
+        """
         s = '\\begin{tabular}{'+self._col_descr+'}\n'
         if self._header_top_hline:
             s += '\\hline \n'
@@ -98,5 +134,12 @@ class LatexTable(object):
 
 
     def save_file(self, filename):
+        """
+        Saves the table into filename.
+
+        Parameters:
+        -----------
+        filename: The name of the file to save the table.
+        """
         with open(filename, mode='w' ) as f:
             f.write(self.__str__())
