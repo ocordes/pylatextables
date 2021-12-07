@@ -13,7 +13,7 @@ class LatexTable(object):
                 header_bottom_hline=True,
                 header_top_hline=False,
                 footer_hline=False,
-                col_align='c',
+                col_type='c',
                 col_descr=None     # overwrite the col_description, default is col_align for all colums
                 ):
 
@@ -26,9 +26,9 @@ class LatexTable(object):
 
         # handle the columnn descriptions
         if col_descr is None:
-            if col_align not in ['c', 'l', 'r']:
-                raise ValueError('col_descr must be one of \'l\',\'c\',\'r\'')
-            self._col_descr = ''.join([col_align for i in range(self._nritems)])
+            if col_type not in ['c', 'l', 'r', 'S']:
+                raise ValueError('col_type must be one of \'l\',\'c\',\'r\',\'S\'')
+            self._col_descr = ''.join([col_type for i in range(self._nritems)])
         else:
             self._col_descr = col_descr
 
