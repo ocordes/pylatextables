@@ -8,9 +8,13 @@ import numpy as np
 
 
 a = np.arange(0, 10, dtype=np.float64)
-b = a**2
+b = a / 7
 
-table = tab.LatexTable([a,b], col_type='c', header=[r'$x$', r'$x^2$' ])
+table = tab.LatexTable([a,b], 
+                        use_booktabs=True,
+                        col_type='S', 
+                        col_siunitx=None,
+                        header=[r'$x$', r'$x^2$' ])
 table.save_file('table.tex')
 
 print(table)

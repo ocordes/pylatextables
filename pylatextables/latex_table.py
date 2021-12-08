@@ -1,7 +1,7 @@
 """
 
 written by: Oliver Cordes 2021-11-30
-changed by: Oliver Cordes 2021-12-07
+changed by: Oliver Cordes 2021-12-08
 """
 
 import numpy as np
@@ -10,12 +10,14 @@ import numpy as np
 
 class LatexTable(object):
     def __init__(self, data,
+                use_booktabs=False,
                 header=None,
                 header_bottom_hline=True,
                 header_top_hline=False,
                 footer_hline=False,
                 col_type='c',
-                col_descr=None     # overwrite the col_description, default is col_type for all colums
+                col_descr=None,     # overwrite the col_description, default is col_type for all colums
+                col_siunitx=None
                 ):
         """
         Initialise a LatexTable object with all data structures. The LaTeX table will be created with __str__
@@ -49,6 +51,13 @@ class LatexTable(object):
         self._data = data
         self._nritems = len(data)
 
+        # check for booktabs package
+        if use_booktabs:
+            self._hline = ['\\toprule', '\midrule', '\bottomrule']
+        else:
+            self._hline = ['\\hline'] * 3
+
+
         # handle the columnn descriptions
         if col_descr is None:
             if col_type not in ['c', 'l', 'r', 'S']:
@@ -59,6 +68,13 @@ class LatexTable(object):
             self._col_descr = col_descr
             self._col_type = None
 
+        # apply a special format for siunitx declarations
+        if (col_siunitx is not None) and  isinstance(col_siunitx, (list, tuple)):
+            if len(col_siunitx) != self._nritems:
+                raise ValueError('col_siunitx must havesame length as number of columns')
+            self._col_siunitx = col_siunitx
+        else:       
+            self._col_siunitx = [col_siunitx for i in range(self._nritems)]
 
         # check for header descriptions
         if header is not None:
@@ -71,6 +87,7 @@ class LatexTable(object):
 
             else:
                 raise ValueError('header must be list or tuple')
+
         self._header = header
         self._header_top_hline = header_top_hline
         self._header_bottom_hline = header_bottom_hline
@@ -102,13 +119,13 @@ class LatexTable(object):
                 raise TypeError('Column must be list, tuple or np.ndarray')
 
 
-    def __str__(self):
+    def _print_header(self):
         """
-        Converts the data columns into a LaTeX table represented as an ascii string.
+        Creates the header of the table
         """
         s = '\\begin{tabular}{'+self._col_descr+'}\n'
         if self._header_top_hline:
-            s += '\\hline \n'
+            s += self._hline[0]+'\n'
         if self._header is not None:
             for cols in range(self._nritems):
                 s += f'{self._header[cols]}'
@@ -117,20 +134,55 @@ class LatexTable(object):
             s += ' \\\\ \n'
 
         if self._header_bottom_hline:
-            s += '\\hline \n'
+            s += self._hline[1]+'\n'
 
+        return s
+
+
+    def _print_footer(self):
+        """
+        Creates the footer part of the table
+        """
+        s = ''
+        if self._footer_hline:
+            s += self._hline[2]+'\n'
+
+        s += '\\end{tabular} \n'
+        return s
+
+
+    def _print_table(self):
+        """
+        Creates the body of the table
+        """
+        s = ''
         for lines in range(self._length):
             for cols in range(self._nritems):
-                s += f'{self._data[cols][lines]}'
+                s += self._print_value(cols, self._data[cols][lines])
                 if cols < (self._nritems-1):
                     s += ' & '
             s += ' \\\\ \n'
 
-        if self._footer_hline:
-            s += '\\hline \n'
-
-        s += '\\end{tabular} \n'
         return s
+
+
+    def _print_value(self, col, value,):
+        """
+        Converts a value into something useful
+        """
+        if self._col_siunitx[col] is None:
+            s = f'{value}'
+        else:
+            s = self._col_siunitx[col]+'{'f'{value}'+'}'
+
+        return s
+
+
+    def __str__(self):
+        """
+        Converts the data columns into a LaTeX table represented as an ascii string.
+        """
+        return self._print_header() + self._print_table() + self._print_footer()
 
 
     def save_file(self, filename):
