@@ -1,7 +1,7 @@
 """
 
 written by: Oliver Cordes 2021-11-30
-changed by: Oliver Cordes 2021-12-08
+changed by: Oliver Cordes 2021-12-16
 """
 
 import numpy as np
@@ -16,8 +16,10 @@ class LatexTable(object):
                 header_top_hline=False,
                 footer_hline=False,
                 col_type='c',
-                col_descr=None,     # overwrite the col_description, default is col_type for all colums
-                col_siunitx=None
+                col_descr=None,         # overwrite the col_description, default is col_type for all colums
+                col_siunitx=None,
+                col_precision=None,
+                precision_format=True   # use the f-string notation
                 ):
         """
         Initialise a LatexTable object with all data structures. The LaTeX table will be created with __str__
@@ -42,6 +44,14 @@ class LatexTable(object):
         col_descr: list or tuple, optional
             Sets the col_type individually for all columns. The number of entries must be the same
             as the number of data columns. (There is no check of correctness!)
+        col_siunitx: list, tuple or str, optional
+            Sets the siunitx converter for all columns or with a list/tuple for each column individually. 
+            Default ist None.
+        col_precision: list, tuple or str, optional
+            Sets the precision for all all columns or with a list/tuple for each column individually. 
+            Default ist None.
+        precision_format: bool, optional
+            Style of the precision format, Default==True, use f-string-style, False is the old-Style
         """
 
         self._length = -1
@@ -53,7 +63,7 @@ class LatexTable(object):
 
         # check for booktabs package
         if use_booktabs:
-            self._hline = ['\\toprule', '\midrule', '\bottomrule']
+            self._hline = ['\\toprule', '\\midrule', '\\bottomrule']
         else:
             self._hline = ['\\hline'] * 3
 
@@ -61,7 +71,8 @@ class LatexTable(object):
         # handle the columnn descriptions
         if col_descr is None:
             if col_type not in ['c', 'l', 'r', 'S']:
-                raise ValueError('col_type must be one of \'l\',\'c\',\'r\',\'S\'')
+                raise ValueError(
+                    'col_type must be one of \'l\',\'c\',\'r\',\'S\'')
             self._col_descr = ''.join([col_type for i in range(self._nritems)])
             self._col_type = col_type
         else:
@@ -71,10 +82,19 @@ class LatexTable(object):
         # apply a special format for siunitx declarations
         if (col_siunitx is not None) and  isinstance(col_siunitx, (list, tuple)):
             if len(col_siunitx) != self._nritems:
-                raise ValueError('col_siunitx must havesame length as number of columns')
+                raise ValueError('col_siunitx must have the same length as the number of columns')
             self._col_siunitx = col_siunitx
         else:       
-            self._col_siunitx = [col_siunitx for i in range(self._nritems)]
+            self._col_siunitx = [col_siunitx] * self._nritems
+
+        # apply a precision formatting for columns
+        if (col_precision is not None) and isinstance(col_precision, (list, tuple)):
+            if len(col_precision) != self._nritems:
+                raise ValueError('col_precision must have the same length as the number of columns')
+            self._col_precision = col_precision
+        else:
+            #self._col_precision = [col_precision for i in range(self._nritems)]
+            self._col_precision = [col_precision] * self._nritems
 
         # check for header descriptions
         if header is not None:
@@ -92,6 +112,8 @@ class LatexTable(object):
         self._header_top_hline = header_top_hline
         self._header_bottom_hline = header_bottom_hline
         self._footer_hline = footer_hline
+
+        self._precision_format = precision_format
         
 
     def _check_data(self, data):
@@ -170,9 +192,20 @@ class LatexTable(object):
         """
         Converts a value into something useful
         """
+
         if self._col_siunitx[col] is None:
-            s = f'{value}'
+            if self._col_precision[col] is None:
+                s = f'{value}'
+            else:
+                if self._precision_format:
+                    # convert with the python precision and rounding using f-string style
+                    s = '{%s}' % self._col_precision[col]
+                    s = s.format(value)
+                else:
+                    # convert with the python precision and rounding old style
+                    s = self._col_precision[col] % value
         else:
+            # convert with the LaTeX precision and rounding
             s = self._col_siunitx[col]+'{'f'{value}'+'}'
 
         return s
